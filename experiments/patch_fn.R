@@ -1,30 +1,30 @@
 
-ftest <- function(x, y){
-  u <- x+y
-  v <- u^2
-  z <- v+x
-  if(x%%2==0){
-    z0 <- z+1
-  }else{
-    if(y%%2 == 0){
-      v <- 11
-      z1 <- 14
-      u <- 10
-    }else{
-      z1 <- 10
-    }
-    z0 <- z^2+z1
-  }
-
-  if(z0%%5 == 1){
-    z2 <- z0*2
-  }else{
-    z2 <- z0*3
-  }
-
-  z2
-
-}
+# ftest <- function(x, y){
+#   u <- x+y
+#   v <- u^2
+#   z <- v+x
+#   if(x%%2==0){
+#     z0 <- z+1
+#   }else{
+#     if(y%%2 == 0){
+#       v <- 11
+#       z1 <- 14
+#       u <- 10
+#     }else{
+#       z1 <- 10
+#     }
+#     z0 <- z^2+z1
+#   }
+#
+#   if(z0%%5 == 1){
+#     z2 <- z0*2
+#   }else{
+#     z2 <- z0*3
+#   }
+#
+#   z2
+#
+# }
 
 locate_section <- function(fbody, search_str){
   fbody_n <- fbody
