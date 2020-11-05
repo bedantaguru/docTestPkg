@@ -102,7 +102,35 @@ append_in_section <- function(fbody, tloc, expr, env = NULL, after = TRUE){
   fbody_mod
 }
 
-patch_function <- function(f, search_str, expr, replace_it = FALSE, append_after = TRUE, chop_locator_to = NULL){
+# env to store functions
+pre_patch_function_store <- new.env()
+
+store_original_function<- function(f, env = NULL){
+  if(!is.null(env)){
+    fn <- as.character(substitute(f, env))
+  }else{
+    fn <- as.character(substitute(f))
+  }
+  if(is.null(pre_patch_function_store[[fn]])){
+    assign(fn, f, envir = pre_patch_function_store)
+  }else{
+    return(get(fn, envir = pre_patch_function_store))
+  }
+  return(f)
+}
+
+patch_function <- function(f, search_str, expr, replace_it = FALSE, append_after = TRUE, chop_locator_to = NULL, env = NULL){
+
+
+  if(is.null(env)){
+    env <- environment()
+  }
+
+  fs <- store_original_function(f, env = env)
+  if(missing(search_str)){
+    return(fs)
+  }
+
 
   fbody <- body(f)
   # match first occurrence
@@ -121,9 +149,9 @@ patch_function <- function(f, search_str, expr, replace_it = FALSE, append_after
   }
 
   if(replace_it){
-    fbody_new <- replace_in_section(fbody, tloc, expr, env = environment())
+    fbody_new <- replace_in_section(fbody, tloc, expr, env = env)
   }else{
-    fbody_new <- append_in_section(fbody, tloc, expr, env = environment(), after = append_after)
+    fbody_new <- append_in_section(fbody, tloc, expr, env = env, after = append_after)
   }
 
 

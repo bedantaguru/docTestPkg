@@ -4,31 +4,30 @@
 
 
 # sample auto completion for future::plan
-.rs.addFunction("getCompletionsFuturePlans", function(token)
-{
-  candidates <- c("sequential",
-                  "transparent",
-                  "multisession",
-                  "multicore",
-                  "multiprocess",
-                  "cluster",
-                  "remote")
-  results <- .rs.selectFuzzyMatches(candidates, token)
-
-  .rs.makeCompletions(token = token,
-                      results = results,
-                      quote = FALSE,
-                      type = .rs.acCompletionTypes$VECTOR)
-})
 
 .rs.addJsonRpcHandler("get_completions",
                       patch_function(.rs.rpc.get_completions, ".rs.getCompletionsEnvironmentVariables",
                                      # addition portion
                                      if (length(string) &&
-                                         "future" %in% loadedNamespaces() &&
+                                         ("future" %in% .packages()) &&
                                          string[[1]] == "plan" &&
-                                         numCommas[[1]] == 0)
-                                       return(.rs.getCompletionsFuturePlans(token)),
+                                         numCommas[[1]] == 0){
+
+                                       candidates <- c("sequential",
+                                                       "transparent",
+                                                       "multisession",
+                                                       "multicore",
+                                                       "multiprocess",
+                                                       "cluster",
+                                                       "remote")
+                                       results <- .rs.selectFuzzyMatches(candidates, token)
+
+                                       return(.rs.makeCompletions(token = token,
+                                                                  results = results,
+                                                                  quote = FALSE,
+                                                                  type = .rs.acCompletionTypes$VECTOR))
+
+                                     },
                                      chop_locator_to = 1)
 )
 
@@ -59,45 +58,56 @@
 #                                chop_locator_to = 1)
 # )
 
-
-.rs.addFunction("getRChainCompletions",
-                patch_function(.rs.getRChainCompletions, ".rs.getNames",
-                               if(length(objectNames )>0) browser(),
-                               chop_locator_to = 5)
-)
+#
+# .rs.addFunction("getRChainCompletions",
+#                 patch_function(.rs.getRChainCompletions, ".rs.getNames",
+#                                if(length(objectNames )>0) browser(),
+#                                chop_locator_to = 5)
+# )
 
 
 # attempt filter
 .rs.addJsonRpcHandler("get_completions",
                       patch_function(.rs.rpc.get_completions, ".rs.getCompletionsEnvironmentVariables",
+
                                      # addition portion
                                      if (length(string) &&
+                                         ("dplyr" %in% .packages())  &&
                                          string[[1]] == "filter" &&
                                          any(grepl("==", line))){
 
-                                       if(exists(chainObjectName, envir = envir)){
-                                         chainObject <- envir[[chainObjectName]]
+                                       chainObject <- .rs.getAnywhere(chainObjectName, envir)
+
+                                       if(!is.null(chainObject)){
+
                                          if(is.data.frame(chainObject)){
                                            pline <- gsub(" +","",line)
                                            cname_attempt <- rev(unlist(strsplit(rev(unlist(strsplit(pline, "==")))[1], "\\(|[ ]+|,")))[[1]]
                                            if(cname_attempt %in% colnames(chainObject)){
                                              # safe limit
-                                             if(nrow(chainObject)<10^5){
+                                             safe_lim <- getOption("filter_auto_complete_row_limit")
+                                             safe_lim <- ifelse(is.null(safe_lim), 10^6, safe_lim)
+                                             if(nrow(chainObject)<safe_lim){
                                                this_col <- chainObject[[cname_attempt]]
-                                               if(is.factor(this_col)){
-                                                 choices <- levels(this_col)
-                                               }else{
-                                                 choices <- unique(this_col)
-                                               }
+                                               if(is.character(this_col) |is.factor(this_col)){
+                                                 if(is.factor(this_col)){
+                                                   choices <- levels(this_col)
+                                                 }else{
+                                                   choices <- unique(this_col)
+                                                 }
 
-                                               # safe limit
-                                               if(length(choices)<50){
-                                                 results <- .rs.selectFuzzyMatches(choices, token)
+                                                 # safe limit
+                                                 if(length(choices)<safe_lim/2){
+                                                   results <- .rs.selectFuzzyMatches(choices, token)
 
-                                                 return(.rs.makeCompletions(token = token,
-                                                                     results = results,
-                                                                     quote = TRUE,
-                                                                     type = .rs.acCompletionTypes$STRING))
+                                                   # show only first 200 (max)
+                                                   results <- results[seq(min(200, length(results)))]
+
+                                                   return(.rs.makeCompletions(token = token,
+                                                                              results = results,
+                                                                              quote = TRUE,
+                                                                              type = .rs.acCompletionTypes$STRING))
+                                                 }
                                                }
                                              }
                                            }
@@ -107,3 +117,7 @@
                                      },
                                      chop_locator_to = 1)
 )
+
+# reset
+.rs.addJsonRpcHandler("get_completions",
+                      patch_function(.rs.rpc.get_completions))
