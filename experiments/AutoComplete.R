@@ -121,3 +121,68 @@
 # reset
 .rs.addJsonRpcHandler("get_completions",
                       patch_function(.rs.rpc.get_completions))
+
+.rs.addFunction("getCompletionsArgument",
+                patch_function(.rs.getCompletionsArgument))
+
+.rs.addFunction("getCompletionsArgument",
+                patch_function(.rs.getCompletionsArgument, '"knitr"',
+                               {
+                                 # one has to add {} in such cases
+
+                                 list_match_args <- function(fun){
+                                   out <- list()
+                                   if(is.function(fun)){
+                                     fbody <- body(fun)
+                                     fbodyl <- as.character(fbody)
+                                     fargs <- formals(fun)
+                                     chk_strs1 <- paste0("arg_match[[:space:]]*\\([[:space:]]*",names(fargs),"[[:space:]]*\\)")
+                                     chk_strs2 <- paste0("arg_match0[[:space:]]*\\([[:space:]]*",names(fargs),"[[:space:]]*\\)")
+                                     chk_strs3 <- paste0("match.arg[[:space:]]*\\([[:space:]]*",names(fargs),"[[:space:]]*\\)")
+                                     is_marg <- logical(length(chk_strs1))
+                                     for(i in seq_along(chk_strs1)){
+                                       is_marg[i] <-  any(grepl(chk_strs1[i], fbodyl)) |
+                                         any(grepl(chk_strs2[i], fbodyl)) |
+                                         any(grepl(chk_strs3[i], fbodyl))
+                                     }
+                                     if(any(is_marg)){
+                                       out <- fargs[is_marg]
+                                     }
+                                   }
+                                   out
+
+                                 }
+
+                                 fun <- .rs.getAnywhere(as.character(functionCall)[1], envir)
+                                 m_args <- list_match_args(fun)
+
+                                 if(activeArg %in% names(m_args)){
+                                   choices <- eval(m_args[[activeArg]])
+                                   results <- .rs.selectFuzzyMatches(choices, token)
+
+                                   return(.rs.makeCompletions(token = token,
+                                                              results = results,
+                                                              quote = TRUE,
+                                                              type = .rs.acCompletionTypes$STRING))
+                                 }
+                               },
+                               chop_locator_to = 1))
+
+
+
+
+# arg match case completion
+
+
+#
+# Check this
+#
+# f1<- function(zi=c("hi","hello"), yi =c("g","t"), phi = c("cos", "sin"), fo= c(1,5), x){
+#   yi <- match.arg(yi)
+#   zi <- rlang::arg_match(zi)
+#   paste0(zi, yi, phi, fo)
+# }
+#
+#
+#
+
